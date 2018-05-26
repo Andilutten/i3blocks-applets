@@ -18,29 +18,43 @@ func appDate() {
 	fmt.Fprintf(os.Stdout, s)
 }
 
-func appBattery() {
-	out := bytes.NewBufferString("")
-	cmd := exec.Command("acpi")
-	cmd.Stdout = out
-	err := cmd.Run()
-	if err != nil {
-		panic(err)
+func battery() error {
+	output := make([]string, 0)
+	buffer := bytes.NewBufferString("")
+	command := exec.Command("acpi")
+	rePercent := regexp.MustCompile("[0-9]{1,}%")
+	reStatus := regexp.MustCompile("Charging|Full|Discharging")
+
+	command.Stdout = buffer
+
+	if err := command.Run(); err != nil {
+		return err
 	}
 
-	var status string
-	items := strings.Split(out.String(), " ")
-	switch items[2] {
-	case "Full,":
-		status = "⚡"
-	case "Charging,":
-		status = "🔌"
-	case "Discharging":
-		status = "🔋"
-	default:
-		status = "❓"
-	}
+	for index, line := range strings.Split(buffer.String(), "\n") {
+		status := reStatus.Find([]byte(line))
+		percentage := rePercent.Find([]byte(line))
+		var statusSymbol string
 
-	fmt.Fprintf(os.Stdout, "%s %s", status, items[3])
+		if len(percentage) == 0 {
+			continue
+		}
+
+		switch string(status) {
+		case "Full":
+			statusSymbol = "⚡"
+		case "Charging":
+			statusSymbol = "🔌"
+		case "Discharging":
+			statusSymbol = "🔋"
+		default:
+			statusSymbol = "❓"
+		}
+
+		output = append(output, fmt.Sprintf("Battery %v: %s %s", index+1, percentage, statusSymbol))
+	}
+	fmt.Fprint(os.Stdout, strings.Join(output, ", "))
+	return nil
 }
 
 func appWeather() {
@@ -80,7 +94,7 @@ func main() {
 	case "date":
 		appDate()
 	case "battery":
-		appBattery()
+		battery()
 	default:
 		// TODO: Print possible args
 	}
