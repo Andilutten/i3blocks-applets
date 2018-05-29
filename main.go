@@ -18,14 +18,36 @@ func appDate() {
 	fmt.Fprintf(os.Stdout, s)
 }
 
+func volume() error {
+	buffer := bytes.NewBufferString("")
+	command := exec.Command("pamixer", "--get-mute")
+	command.Stdout = buffer
+	command.Run()
+	if strings.Contains(buffer.String(), "true") {
+		fmt.Print("🔇")
+		return nil
+	}
+	buffer = bytes.NewBufferString("")
+	command = exec.Command("pamixer", "--get-volume")
+	command.Stdout = buffer
+	command.Run()
+	fmt.Print("🔊 " + strings.Replace(buffer.String(), "\n", "", -1) + "%")
+	return nil
+}
+
 func battery() error {
+	symbols := make(map[string]string)
 	output := make([]string, 0)
 	buffer := bytes.NewBufferString("")
 	command := exec.Command("acpi")
 	rePercent := regexp.MustCompile("[0-9]{1,}%")
-	reStatus := regexp.MustCompile("Charging|Full|Discharging")
+	reStatus := regexp.MustCompile("Unknown|Charging|Full|Discharging")
 
 	command.Stdout = buffer
+	symbols["Full"] = "⚡"
+	symbols["Charging"] = "🔌"
+	symbols["Discharging"] = "🔋"
+	symbols["Unknown"] = "❓"
 
 	if err := command.Run(); err != nil {
 		return err
@@ -34,21 +56,10 @@ func battery() error {
 	for index, line := range strings.Split(buffer.String(), "\n") {
 		status := reStatus.Find([]byte(line))
 		percentage := rePercent.Find([]byte(line))
-		var statusSymbol string
+		statusSymbol, _ := symbols[string(status)]
 
 		if len(percentage) == 0 {
 			continue
-		}
-
-		switch string(status) {
-		case "Full":
-			statusSymbol = "⚡"
-		case "Charging":
-			statusSymbol = "🔌"
-		case "Discharging":
-			statusSymbol = "🔋"
-		default:
-			statusSymbol = "❓"
 		}
 
 		output = append(output, fmt.Sprintf("Battery %v: %s %s", index+1, percentage, statusSymbol))
@@ -95,6 +106,10 @@ func main() {
 		appDate()
 	case "battery":
 		battery()
+	case "volume":
+		if err := volume(); err != nil {
+			fmt.Fprintf(os.Stderr, "ERROR: %s", err.Error())
+		}
 	default:
 		// TODO: Print possible args
 	}
