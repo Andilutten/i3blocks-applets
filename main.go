@@ -6,14 +6,15 @@ import (
 	"os"
 	"os/exec"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 )
 
 func clock() {
 	t := time.Now()
-	hour := string(t.Hour())
-	minute := string(t.Minute())
+	hour := strconv.FormatInt(int64(t.Hour()), 10)
+	minute := strconv.FormatInt(int64(t.Minute()), 10)
 	if len(hour) < 2 {
 		hour = "0" + hour
 	}
