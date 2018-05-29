@@ -8,11 +8,22 @@ import (
 	"regexp"
 	"strings"
 	"time"
-
-	timeapplet "github.com/Andilutten/i3blocks-applets/time-applet"
 )
 
-func appDate() {
+func clock() {
+	t := time.Now()
+	hour := string(t.Hour())
+	minute := string(t.Minute())
+	if len(hour) < 2 {
+		hour = "0" + hour
+	}
+	if len(minute) < 2 {
+		minute = "0" + minute
+	}
+	fmt.Fprintf(os.Stdout, "🕓 %s:%s", hour, minute)
+}
+
+func date() {
 	t := time.Now()
 	s := fmt.Sprintf("📆 %v-%v-%v", t.Day(), t.Month().String(), t.Year())
 	fmt.Fprintf(os.Stdout, s)
@@ -68,49 +79,31 @@ func battery() error {
 	return nil
 }
 
-func appWeather() {
-	out := bytes.NewBufferString("")
-	cmd := exec.Command("curl", "wttr.in/~Sweden+Trollhättan")
-
-	cmd.Stdout = out
-	err := cmd.Run()
-	if err != nil {
-		panic(err)
-	}
-
-	line := strings.Split(out.String(), "\n")[12]
-	re := regexp.MustCompile("[0-9][0-9]")
-
-	hits := re.FindAll([]byte(line), -1)
-	for _, hit := range hits {
-		fmt.Println(string(hit))
-	}
+func help() {
+	fmt.Println("Use with one of the following commands")
+	fmt.Println("\ttime - Prints a clock")
+	fmt.Println("\tdate - Shows the current date")
+	fmt.Println("\tbattery - Shows the status of every battery on the device")
+	fmt.Println("\tvolume - Prints the current volume or mute")
 }
 
 func main() {
 	if len(os.Args) < 2 {
-		// TODO: Print possible args
+		help()
 		return
 	}
 
 	arg := os.Args[1]
 	switch arg {
 	case "time":
-		timeapplet.TimeApp{
-			GetTime: time.Now,
-			Out:     os.Stdout,
-		}.Run()
-	case "weather":
-		appWeather()
+		clock()
 	case "date":
-		appDate()
+		date()
 	case "battery":
 		battery()
 	case "volume":
-		if err := volume(); err != nil {
-			fmt.Fprintf(os.Stderr, "ERROR: %s", err.Error())
-		}
+		volume()
 	default:
-		// TODO: Print possible args
+		help()
 	}
 }
